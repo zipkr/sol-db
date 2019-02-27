@@ -1,13 +1,18 @@
 extern crate rand;
 extern crate uuid;
+extern crate stopwatch;
 
 use std::fs::{self, File};
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
-use uuid::Uuid;
+use std::io::LineWriter;
+use std::io::prelude::*;
+use std::thread;
 
+use uuid::Uuid;
 use rand::prelude::*;
+use stopwatch::{Stopwatch};
 
 struct Shard<'a> {
     path: &'a str,
@@ -17,12 +22,15 @@ struct ShardManager<'a> {
     hot_shards: HashMap<&'a str, &'a Shard<'a>>
 }
 
-fn create_file(s: &str) -> Result<File, Box<Error>> {
+fn create_file(s: &str) -> Result<File, &'static str> {
     let mut f = File::create(s);
-    Ok(f.unwrap())
+    match f {
+        Ok(z) => Ok(z),
+        Err(e) => Err("error creating file")
+    }
 }
 
-fn write_data(shard_map: HashMap<&str, File>, data: &str) {
+fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'static str>{
     // get write_hash
     let seed: u128 = random();
     let write_hash = Uuid::from_u128(seed);
@@ -41,11 +49,16 @@ fn write_data(shard_map: HashMap<&str, File>, data: &str) {
     prefix.push_str(&separator);
     let mut suffix = data.to_owned();
     prefix.push_str(&suffix);
-    println!("{}", prefix);
 
     let mut target_shard = write_hash.to_string().chars().next().unwrap();
     match shard_map.get::<str>(&target_shard.to_string()) {
-        Some(target_file) => fs::write(target_file, prefix).expect("Unable to write data"),
+        Some(target_file) => {
+            let mut writer = LineWriter::new(target_file);
+            writer.write_all(prefix.as_bytes());
+            writer.write_all(b"\n");
+            Ok(true)
+        }
+        None => Err("error writing")
     }
 }
 
@@ -64,6 +77,26 @@ fn main() {
         let mut x_str: &str = &x.to_string();
         base.push_str(x_str);
         let file = create_file(&base);
-        shard_map.insert(shards[x], file);
+        match file {
+            Ok(matched_file) => shard_map.insert(shards[x], matched_file),
+            Err(e) => None
+        };
+        
     }
+
+
+    let sw = Stopwatch::start_new();
+
+    let handle = thread::spawn(move || {
+        // 100 million writes
+        for x in 0..100000000 {
+            match write_data(&shard_map, &x.to_string()) {
+                Ok(o) => (),
+                Err(e) => println!("error writing data") 
+            };
+        }
+    });
+    handle.join().unwrap();
+
+    println!("{}", &sw.elapsed_ms().to_string());
 }
