@@ -86,17 +86,13 @@ fn main() {
 
 
     let sw = Stopwatch::start_new();
-
-    let handle = thread::spawn(move || {
-        // 100 million writes
-        for x in 0..100000000 {
-            match write_data(&shard_map, &x.to_string()) {
-                Ok(o) => (),
-                Err(e) => println!("error writing data") 
-            };
-        }
-    });
-    handle.join().unwrap();
+    // 1 million writes
+    for x in 0..1000000 {
+        match write_data(&shard_map, &x.to_string()) {
+            Ok(o) => (),
+            Err(e) => println!("error writing data") 
+        };
+    }
 
     println!("{}", &sw.elapsed_ms().to_string());
 }

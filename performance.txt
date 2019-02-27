@@ -1,0 +1,3 @@
+1mm writes perf test
+multithreaded: 22577ms
+singlethreaded: 22865ms
