@@ -5,3 +5,5 @@ authors = ["zipkr <zipkr@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+uuid = { version = "0.7", features = [ "u128" ] }
+rand = "0.6.5"
