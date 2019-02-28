@@ -2,7 +2,7 @@ extern crate rand;
 extern crate uuid;
 extern crate stopwatch;
 
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
@@ -23,12 +23,19 @@ struct ShardManager<'a> {
 }
 
 fn create_file(s: &str) -> Result<File, &'static str> {
-    let mut f = File::create(s);
+    let mut f = OpenOptions::new()
+                    .read(true)
+                    .append(true)
+                    .create(true)
+                    .open(s);
     match f {
         Ok(z) => Ok(z),
         Err(e) => Err("error creating file")
     }
 }
+
+// 1551321085012281489, 05d7ef10-4873-b6a5-4c20-d5280d15d546, 25
+
 
 fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'static str>{
     // get write_hash
@@ -79,18 +86,19 @@ fn main() {
         let file = create_file(&base);
         match file {
             Ok(matched_file) => shard_map.insert(shards[x], matched_file),
-            Err(e) => None
+            Err(_) => None
         };
-        
     }
+
+
 
 
     let sw = Stopwatch::start_new();
     // 1 million writes
     for x in 0..1000000 {
         match write_data(&shard_map, &x.to_string()) {
-            Ok(o) => (),
-            Err(e) => println!("error writing data") 
+            Ok(_) => (),
+            Err(e) => println!("error writing data: {}", e) 
         };
     }
 
