@@ -6,7 +6,7 @@ use std::fs::{self, File, OpenOptions};
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
-use std::io::LineWriter;
+use std::io::{BufReader, LineWriter};
 use std::io::prelude::*;
 use std::thread;
 
@@ -14,16 +14,18 @@ use uuid::Uuid;
 use rand::prelude::*;
 use stopwatch::{Stopwatch};
 
-struct Shard<'a> {
-    path: &'a str,
+struct DataGateway<'a> {
+    file: &'a File,
+    reader: &'a BufReader<File>,
+    writer: &'a LineWriter<File>,
 }
 
-struct ShardManager<'a> {
-    hot_shards: HashMap<&'a str, &'a Shard<'a>>
+struct Shard <'a, 'b>{
+    file_map: &'a HashMap<&'a str, &'a DataGateway<'b>>,
 }
 
 fn create_file(s: &str) -> Result<File, &'static str> {
-    let mut f = OpenOptions::new()
+    let f = OpenOptions::new()
                     .read(true)
                     .append(true)
                     .create(true)
@@ -36,8 +38,20 @@ fn create_file(s: &str) -> Result<File, &'static str> {
 
 // 1551321085012281489, 05d7ef10-4873-b6a5-4c20-d5280d15d546, 25
 
+fn read_data(shard_map: &HashMap<&str, File>, key: &str) -> Result<&'static str, &'static str> {
+    let target_shard = key.to_string().chars().next().unwrap();
+    match shard_map.get::<str>(&target_shard.to_string()) {
+        Some(target_file) => {
+            let mut reader = BufReader::new(target_file);
+            let mut line = String::new();
+            reader.read_line(&mut line);
+            Ok("found and reading from file") 
+        }
+        None => Err("error reading")
+    }
+}
 
-fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'static str>{
+fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'static str> {
     // get write_hash
     let seed: u128 = random();
     let write_hash = Uuid::from_u128(seed);
@@ -89,10 +103,14 @@ fn main() {
             Err(_) => None
         };
     }
+    
+    let datum = read_data(&shard_map, "05d7ef10-4873-b6a5-4c20-d5280d15d546");
+    match datum {
+        Ok(datastring) => println!("{}", datastring),
+        Err(_) => println!("error reading data")
+    }
 
-
-
-
+    /*
     let sw = Stopwatch::start_new();
     // 1 million writes
     for x in 0..1000000 {
@@ -101,6 +119,7 @@ fn main() {
             Err(e) => println!("error writing data: {}", e) 
         };
     }
-
     println!("{}", &sw.elapsed_ms().to_string());
+    */
+
 }
