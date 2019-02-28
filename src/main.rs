@@ -59,7 +59,7 @@ impl DataGateway {
     }
 }
 
-fn new_shard<'a>(mut hm: HashMap<&str, DataGateway<>>) {
+fn new_shard(mut hm: HashMap<&str, DataGateway<>>) {
     let shards: [&'static str; 16] = [
         "0", "1", "2", "3",
         "4", "5", "6", "7",
@@ -138,24 +138,6 @@ fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'sta
 }
 
 fn main() {
-
     let mut hmap = HashMap::new();
     let mut shard = new_shard(hmap);
-    /* let datum = read_data(&shard_map, "05d7ef10-4873-b6a5-4c20-d5280d15d546");
-    match datum {
-        Ok(datastring) => println!("{}", datastring),
-        Err(_) => println!("error reading data")
-    }
-
-    let sw = Stopwatch::start_new();
-    // 1 million writes
-    for x in 0..1000000 {
-        match write_data(&shard_map, &x.to_string()) {
-            Ok(_) => (),
-            Err(e) => println!("error writing data: {}", e) 
-        };
-    }
-    println!("{}", &sw.elapsed_ms().to_string());
-    */
-
 }
