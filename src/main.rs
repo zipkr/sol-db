@@ -105,6 +105,12 @@ fn read_data(shard_map: &HashMap<&str, File>, key: &str) -> Result<&'static str,
     }
 }
 
+fn read_time_series<'a>(
+    shard: &HashMap<&'a str, DataGateway>, time_one: SystemTime, time_two: SystemTime
+)  -> Vec<&'a str> {
+    
+}
+
 fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'static str> {
     // get write_hash
     let seed: u128 = random();
