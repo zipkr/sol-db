@@ -14,14 +14,70 @@ use uuid::Uuid;
 use rand::prelude::*;
 use stopwatch::{Stopwatch};
 
-struct DataGateway<'a> {
-    file: &'a File,
-    reader: &'a BufReader<File>,
-    writer: &'a LineWriter<File>,
+struct DataGateway {
+    file: String,
+    reader: Option<BufReader<File>>,
+    writer: Option<LineWriter<File>>,
 }
 
-struct Shard <'a, 'b>{
-    file_map: &'a HashMap<&'a str, &'a DataGateway<'b>>,
+
+impl DataGateway {
+    fn new(file_path: String) -> Option<DataGateway> {
+        let fp = file_path.as_str();
+
+        let write_f = OpenOptions::new()
+                        .read(true)
+                        .append(true)
+                        .create(true)
+                        .open(fp);
+
+        let read_f = OpenOptions::new()
+                        .read(true)
+                        .append(true)
+                        .create(true)
+                        .open(fp);
+
+        let br: Option<BufReader<File>>;
+        let lw: Option<LineWriter<File>>;
+        br = match read_f {
+            Ok(file) => Some(BufReader::new(file)),
+            Err(_) => None
+        };
+        lw = match write_f {
+            Ok(file) => Some(LineWriter::new(file)),
+            Err(_) => None
+        };
+
+        if br.is_some() && lw.is_some() {
+            return Some(DataGateway{
+                file: file_path,
+                reader: br,
+                writer: lw
+            })
+        }
+        return None
+    }
+}
+
+fn new_shard<'a>(mut hm: HashMap<&str, DataGateway<>>) {
+    let shards: [&'static str; 16] = [
+        "0", "1", "2", "3",
+        "4", "5", "6", "7",
+        "8", "9", "a", "b",
+        "c", "d", "e", "f"
+    ];
+    let mut hmcopy = hm;
+    for x in 0..16 {
+        let mut base: String = "./db/".to_owned();
+        let x_str: &str = &x.to_string();
+        base.push_str(x_str);
+        let dg_option = DataGateway::new(base);
+        match dg_option {
+            Some(dgate) => hmcopy.insert(shards[x], dgate),
+            None => None
+        };
+    }
+    hm = hmcopy;
 }
 
 fn create_file(s: &str) -> Result<File, &'static str> {
@@ -35,8 +91,6 @@ fn create_file(s: &str) -> Result<File, &'static str> {
         Err(e) => Err("error creating file")
     }
 }
-
-// 1551321085012281489, 05d7ef10-4873-b6a5-4c20-d5280d15d546, 25
 
 fn read_data(shard_map: &HashMap<&str, File>, key: &str) -> Result<&'static str, &'static str> {
     let target_shard = key.to_string().chars().next().unwrap();
@@ -64,7 +118,7 @@ fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'sta
 
     // string conversion
     let mut prefix = nwt.to_string().to_owned();
-    let mut separator = ", ".to_owned();
+    let separator = ", ".to_owned();
     prefix.push_str(&separator);
     prefix.push_str(&write_hash.to_string());
     prefix.push_str(&separator);
@@ -84,33 +138,15 @@ fn write_data(shard_map: &HashMap<&str, File>, data: &str) -> Result<bool, &'sta
 }
 
 fn main() {
-    let shards: [&'static str; 16] = [
-        "0", "1", "2", "3",
-        "4", "5", "6", "7",
-        "8", "9", "a", "b",
-        "c", "d", "e", "f"
-    ];
 
-    let mut shard_map = HashMap::new();
-
-    for x in 0..16 {
-        let mut base: String = "./db/".to_owned();
-        let mut x_str: &str = &x.to_string();
-        base.push_str(x_str);
-        let file = create_file(&base);
-        match file {
-            Ok(matched_file) => shard_map.insert(shards[x], matched_file),
-            Err(_) => None
-        };
-    }
-    
-    let datum = read_data(&shard_map, "05d7ef10-4873-b6a5-4c20-d5280d15d546");
+    let mut hmap = HashMap::new();
+    let mut shard = new_shard(hmap);
+    /* let datum = read_data(&shard_map, "05d7ef10-4873-b6a5-4c20-d5280d15d546");
     match datum {
         Ok(datastring) => println!("{}", datastring),
         Err(_) => println!("error reading data")
     }
 
-    /*
     let sw = Stopwatch::start_new();
     // 1 million writes
     for x in 0..1000000 {
